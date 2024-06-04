@@ -1,8 +1,8 @@
-// pages/api/get-groups.ts
+// pages/api/addmember.ts
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { getFirestore, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -12,7 +12,7 @@ const firebaseConfig = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
@@ -26,25 +26,17 @@ if (!getApps().length) {
 const db = getFirestore(app);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method === 'GET') {
+  if (req.method === 'POST') {
     try {
-      const groupsCollection = collection(db, 'groups');
-      const snapshot = await getDocs(groupsCollection);
-      const groups = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          name: doc.id,
-          users: data.users || [],
-          members: data.members || [],
-          created: data.created ? data.created.toDate().toISOString() : null
-        };
+      const { groupId, newMember } = req.body;
+      const groupRef = doc(db, 'groups', groupId);
+      await updateDoc(groupRef, {
+        users: arrayUnion(newMember),
       });
-
-      res.status(200).json(groups);
+      res.status(200).json({ message: 'Member added successfully' });
     } catch (error) {
       const errMsg = (error instanceof Error) ? error.message : 'Unknown error occurred';
-      console.error('Error fetching groups:', errMsg);
+      console.error('Error adding member:', errMsg);
       res.status(500).json({ error: 'Internal Server Error', details: errMsg });
     }
   } else {
